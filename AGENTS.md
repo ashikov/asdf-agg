@@ -49,9 +49,9 @@ If a check cannot run, report the exact gap. Paid APIs, LLM/eval gates, billable
 ## Git and delivery
 
 - Work from current `main` on one focused branch; do not implement directly on `main`.
-- Keep Conventional Commit-style commits focused and do not rewrite published shared history.
+- Keep Conventional Commit-style commits focused and do not rewrite published shared history. If a published working branch genuinely must be rewritten, use only `--force-with-lease`, then re-inspect the diff and rerun applicable checks.
 - Review the final diff for unrelated scope, TODOs, workarounds, documentation drift, and whitespace errors.
-- Unless delivery is explicitly local-only, commit verified changes, push the branch, and create or update one Draft PR to `main`.
+- Unless delivery is explicitly local-only, commit verified changes, push the branch, and create one Draft PR to `main`. Update the existing branch and PR for follow-up fixes instead of opening duplicates.
 - Keep the PR description aligned with actual implementation, checks, integration platforms, compatibility minimum, limitations, and issue-closing references.
 - Do not run paid gates or publish releases/index submissions as an implied part of ordinary PR delivery.
 
