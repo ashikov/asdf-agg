@@ -52,8 +52,11 @@ jobs:
         with:
           command: agg --version
       - name: Verify explicit add, install, select, and asdf exec path
+        env:
+          PLUGIN_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          asdf plugin add agg "$GITHUB_WORKSPACE"
+          asdf plugin add agg "https://github.com/${GITHUB_REPOSITORY}.git"
+          asdf plugin update agg "$PLUGIN_REF"
           version=$(asdf latest agg)
           asdf list all agg | grep -Fx "$version"
           asdf install agg "$version"
@@ -72,8 +75,11 @@ jobs:
           asdf_version: "0.16.0"
           command: agg --version
       - name: Verify explicit add, install, select, and asdf exec path
+        env:
+          PLUGIN_REF: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          asdf plugin add agg "$GITHUB_WORKSPACE"
+          asdf plugin add agg "https://github.com/${GITHUB_REPOSITORY}.git"
+          asdf plugin update agg "$PLUGIN_REF"
           version=$(asdf latest agg)
           asdf list all agg | grep -Fx "$version"
           asdf install agg "$version"
