@@ -144,11 +144,13 @@ test_release_version_validation() {
 }
 
 test_supported_platform_mappings() {
-	assert_equal "agg-x86_64-unknown-linux-gnu" "$(release_asset Linux x86_64 gnu)"
-	assert_equal "agg-x86_64-unknown-linux-gnu" "$(release_asset linux amd64 gnu)"
+	assert_equal "agg-x86_64-unknown-linux-musl" "$(release_asset Linux x86_64 gnu)"
+	assert_equal "agg-x86_64-unknown-linux-musl" "$(release_asset linux amd64 gnu)"
 	assert_equal "agg-aarch64-unknown-linux-gnu" "$(release_asset Linux arm64 gnu)"
 	assert_equal "agg-aarch64-unknown-linux-gnu" "$(release_asset Linux aarch64 gnu)"
 	assert_equal "agg-x86_64-unknown-linux-musl" "$(release_asset Linux x86_64 musl)"
+	assert_equal "agg-x86_64-unknown-linux-musl" "$(release_asset Linux amd64 musl)"
+	assert_equal "agg-x86_64-unknown-linux-musl" "$(release_asset Linux x86_64 unknown)"
 	assert_equal "agg-x86_64-apple-darwin" "$(release_asset Darwin x86_64 '')"
 	assert_equal "agg-aarch64-apple-darwin" "$(release_asset darwin arm64 '')"
 	assert_equal "agg-aarch64-apple-darwin" "$(release_asset Darwin aarch64 '')"
@@ -170,10 +172,6 @@ test_unsupported_platform_errors() {
 	assert_equal "1" "$status" "Linux arm64 musl has no official asset"
 	assert_contains "$output" "Linux/arm64" "the error should include the detected platform"
 	assert_contains "$output" "musl" "the error should include the detected libc"
-
-	capture_failure output status release_asset Linux x86_64 unknown
-	assert_equal "1" "$status" "unknown Linux libc should fail"
-	assert_contains "$output" "libc: unknown" "the error should include the detected libc"
 }
 
 test_libc_detection() {
@@ -203,7 +201,7 @@ test_libc_detection() {
 
 test_release_urls() {
 	assert_equal \
-		"https://github.com/asciinema/agg/releases/download/v1.9.0/agg-x86_64-unknown-linux-gnu" \
+		"https://github.com/asciinema/agg/releases/download/v1.9.0/agg-x86_64-unknown-linux-musl" \
 		"$(release_url 1.9.0 Linux x86_64 gnu)"
 	assert_equal \
 		"https://github.com/asciinema/agg/releases/download/v1.9.0/agg-x86_64-unknown-linux-musl" \
@@ -277,10 +275,42 @@ test_download_places_verified_binary_only() {
 	assert_executable "${download_dir}/agg"
 	assert_equal "agg 1.9.0" "$("${download_dir}/agg" --version)"
 	assert_equal \
-		"https://github.com/asciinema/agg/releases/download/v1.9.0/agg-x86_64-unknown-linux-gnu" \
+		"https://github.com/asciinema/agg/releases/download/v1.9.0/agg-x86_64-unknown-linux-musl" \
 		"$(cat "$url_log")"
 	assert_equal "1" "$(find "$download_dir" -type f | wc -l | tr -d ' ')" \
 		"the download directory should contain only the ready binary"
+}
+
+test_x86_download_does_not_require_libc_detection() {
+	local test_dir
+	local source_binary
+	local download_dir
+	local url_log
+
+	test_dir=$(mktemp -d "${TMPDIR:-/tmp}/asdf-agg-download-unknown-libc.XXXXXX")
+	trap 'rm -rf "$test_dir"' RETURN
+	source_binary="${test_dir}/upstream-binary"
+	download_dir="${test_dir}/download"
+	url_log="${test_dir}/url"
+	make_fake_agg "$source_binary" 1.9.0
+
+	PATH="${repo_dir}/test/fixtures:${PATH}" \
+		FAKE_CURL_SOURCE="$source_binary" \
+		FAKE_CURL_URL_LOG="$url_log" \
+		FAKE_UNAME_OS=Linux \
+		FAKE_UNAME_ARCH=amd64 \
+		FAKE_GETCONF_MODE=fail \
+		FAKE_LDD_MODE=unknown \
+		ASDF_INSTALL_TYPE=version \
+		ASDF_INSTALL_VERSION=1.9.0 \
+		ASDF_DOWNLOAD_PATH="$download_dir" \
+		"${repo_dir}/bin/download"
+
+	assert_executable "${download_dir}/agg"
+	assert_equal \
+		"https://github.com/asciinema/agg/releases/download/v1.9.0/agg-x86_64-unknown-linux-musl" \
+		"$(cat "$url_log")" \
+		"Linux x86_64 should not depend on host libc detection"
 }
 
 test_download_failure_leaves_no_files() {
@@ -315,7 +345,7 @@ test_download_failure_leaves_no_files() {
 
 	assert_equal "1" "$status" "a syntactically valid but nonexistent release should fail"
 	assert_equal \
-		"https://github.com/asciinema/agg/releases/download/v9.9.9/agg-x86_64-unknown-linux-gnu" \
+		"https://github.com/asciinema/agg/releases/download/v9.9.9/agg-x86_64-unknown-linux-musl" \
 		"$(cat "$url_log")" \
 		"the unavailable release should use the requested version without fallback"
 	assert_directory_empty "$download_dir"
@@ -457,6 +487,7 @@ run_test "mocked libc detection distinguishes GNU, musl, and unknown" test_libc_
 run_test "release URLs use exact official asset names" test_release_urls
 run_test "artifact validation rejects empty, non-executable, mismatched, and unrunnable files" test_binary_validation
 run_test "download exposes only a verified executable" test_download_places_verified_binary_only
+run_test "Linux x86_64 download does not require libc detection" test_x86_download_does_not_require_libc_detection
 run_test "a nonexistent stable release fails without fallback or partial files" test_download_failure_leaves_no_files
 run_test "invalid and empty download content is rejected" test_download_rejects_invalid_artifacts
 run_test "install creates the asdf bin/agg layout" test_install_creates_expected_executable
