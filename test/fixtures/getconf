@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ "${1:-}" != "GNU_LIBC_VERSION" ]; then
+	printf 'unsupported fake getconf argument: %s\n' "${1:-}" >&2
+	exit 1
+fi
+
+case "${FAKE_GETCONF_MODE:-gnu}" in
+gnu)
+	printf 'glibc 2.39\n'
+	;;
+fail)
+	exit 1
+	;;
+*)
+	printf 'unknown libc\n'
+	;;
+esac

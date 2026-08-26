@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+output=
+url=
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	--output)
+		output=$2
+		shift 2
+		;;
+	--retry)
+		shift 2
+		;;
+	http://* | https://*)
+		url=$1
+		shift
+		;;
+	*)
+		shift
+		;;
+	esac
+done
+
+printf '%s\n' "$url" >"$FAKE_CURL_URL_LOG"
+
+if [ "${FAKE_CURL_EXIT_CODE:-0}" -ne 0 ]; then
+	if [ -n "${FAKE_CURL_WRITE_ON_FAILURE:-}" ]; then
+		cp "$FAKE_CURL_SOURCE" "$output"
+	fi
+	exit "$FAKE_CURL_EXIT_CODE"
+fi
+
+cp "$FAKE_CURL_SOURCE" "$output"
