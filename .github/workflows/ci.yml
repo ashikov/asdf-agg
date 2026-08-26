@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Shell lint and formatting
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: asdf-vm/actions/install@v4
+      - run: scripts/lint.bash
+
+  regression:
+    name: Regression tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - macos-15
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/test.bash
+
+  current-asdf-integration:
+    name: Current asdf integration (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Ubuntu x86_64
+            os: ubuntu-24.04
+          - platform: Ubuntu ARM64
+            os: ubuntu-24.04-arm
+          - platform: macOS Intel
+            os: macos-15-intel
+          - platform: macOS ARM64
+            os: macos-15
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: asdf-vm/actions/plugin-test@v4
+        with:
+          command: agg --version
+      - name: Verify explicit add, install, select, and asdf exec path
+        run: |
+          asdf plugin add agg "$GITHUB_WORKSPACE"
+          version=$(asdf latest agg)
+          asdf list all agg | grep -Fx "$version"
+          asdf install agg "$version"
+          work_dir=$(mktemp -d)
+          cd "$work_dir"
+          asdf set agg "$version"
+          test "$(asdf exec agg --version)" = "agg $version"
+
+  minimum-asdf-version:
+    name: Minimum asdf version (v0.16.0, Linux x86_64)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: asdf-vm/actions/plugin-test@v4
+        with:
+          asdf_version: "0.16.0"
+          command: agg --version
+      - name: Verify explicit add, install, select, and asdf exec path
+        run: |
+          asdf plugin add agg "$GITHUB_WORKSPACE"
+          version=$(asdf latest agg)
+          asdf list all agg | grep -Fx "$version"
+          asdf install agg "$version"
+          work_dir=$(mktemp -d)
+          cd "$work_dir"
+          asdf set agg "$version"
+          test "$(asdf exec agg --version)" = "agg $version"
+
+  actionlint:
+    name: Workflow lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate workflow files
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
