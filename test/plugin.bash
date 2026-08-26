@@ -287,31 +287,37 @@ test_download_failure_leaves_no_files() {
 	local test_dir
 	local source_binary
 	local download_dir
+	local url_log
 	local status
 
 	test_dir=$(mktemp -d "${TMPDIR:-/tmp}/asdf-agg-download-failure.XXXXXX")
 	trap 'rm -rf "$test_dir"' RETURN
 	source_binary="${test_dir}/partial"
 	download_dir="${test_dir}/download"
+	url_log="${test_dir}/url"
 	printf 'partial download\n' >"$source_binary"
 
 	set +e
 	PATH="${repo_dir}/test/fixtures:${PATH}" \
 		FAKE_CURL_SOURCE="$source_binary" \
-		FAKE_CURL_URL_LOG="${test_dir}/url" \
+		FAKE_CURL_URL_LOG="$url_log" \
 		FAKE_CURL_EXIT_CODE=22 \
 		FAKE_CURL_WRITE_ON_FAILURE=1 \
 		FAKE_UNAME_OS=Linux \
 		FAKE_UNAME_ARCH=x86_64 \
 		FAKE_GETCONF_MODE=gnu \
 		ASDF_INSTALL_TYPE=version \
-		ASDF_INSTALL_VERSION=1.9.0 \
+		ASDF_INSTALL_VERSION=9.9.9 \
 		ASDF_DOWNLOAD_PATH="$download_dir" \
 		"${repo_dir}/bin/download" >/dev/null 2>&1
 	status=$?
 	set -e
 
-	assert_equal "1" "$status" "HTTP failures should fail the download"
+	assert_equal "1" "$status" "a syntactically valid but nonexistent release should fail"
+	assert_equal \
+		"https://github.com/asciinema/agg/releases/download/v9.9.9/agg-x86_64-unknown-linux-gnu" \
+		"$(cat "$url_log")" \
+		"the unavailable release should use the requested version without fallback"
 	assert_directory_empty "$download_dir"
 }
 
@@ -451,7 +457,7 @@ run_test "mocked libc detection distinguishes GNU, musl, and unknown" test_libc_
 run_test "release URLs use exact official asset names" test_release_urls
 run_test "artifact validation rejects empty, non-executable, mismatched, and unrunnable files" test_binary_validation
 run_test "download exposes only a verified executable" test_download_places_verified_binary_only
-run_test "HTTP failure leaves the download directory empty" test_download_failure_leaves_no_files
+run_test "a nonexistent stable release fails without fallback or partial files" test_download_failure_leaves_no_files
 run_test "invalid and empty download content is rejected" test_download_rejects_invalid_artifacts
 run_test "install creates the asdf bin/agg layout" test_install_creates_expected_executable
 run_test "install rejects bad artifacts and preserves unsafe existing paths" test_install_rejects_bad_artifacts_and_unsafe_paths
