@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+current_script_path=${BASH_SOURCE[0]}
+plugin_dir=$(cd "$(dirname "$current_script_path")/.." && pwd)
+query=${1:-}
+
+# shellcheck source=../lib/utils.bash
+source "${plugin_dir}/lib/utils.bash"
+
+if ! version=$(list_all_versions | latest_stable_from_versions "$query"); then
+	fail "no stable version matches '$query'"
+fi
+
+printf '%s\n' "$version"
