@@ -56,9 +56,9 @@ See the [agg documentation](https://github.com/asciinema/agg) for renderer optio
 | macOS | x86_64 | system |
 | macOS | arm64/aarch64 | system |
 
-Only stable releases are listed. Linux arm64 musl is unsupported because upstream does not publish a matching binary. Windows and 32-bit ARM assets are outside this plugin's supported scope.
+Only stable releases are listed. Linux x86_64/amd64 uses the official portable musl release binary on both glibc and musl hosts, avoiding a dependency on the minimum glibc version of each upstream release. Linux arm64 musl is unsupported because upstream does not publish a matching binary. Windows and 32-bit ARM assets are outside this plugin's supported scope.
 
-Upstream GNU/Linux binaries are dynamically linked, and their glibc requirements vary by architecture and release. For `agg` 1.9.0, the x86_64 GNU asset requires glibc 2.38, while the arm64 GNU asset requires glibc 2.18. The x86_64 musl asset is selected only on musl systems; it is never substituted silently for a GNU binary.
+Linux arm64/aarch64 continues to use the upstream GNU binary because no official musl ARM64 asset is available. Its glibc requirement can vary between upstream releases; for `agg` 1.9.0, that binary requires glibc 2.18.
 
 Upstream releases do not currently include standalone checksum files. Downloads use HTTPS and are accepted only when the artifact is non-empty, executable, runs successfully, and reports the requested version exactly.
 

@@ -65,6 +65,50 @@ jobs:
           asdf set agg "$version"
           test "$(asdf exec agg --version)" = "agg $version"
 
+  glibc-compatibility:
+    name: Ubuntu 22.04 / glibc 2.35 render integration
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: asdf-vm/actions/setup@v4
+      - name: Verify install and GIF rendering on glibc 2.35
+        env:
+          PLUGIN_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          glibc_version=$(getconf GNU_LIBC_VERSION)
+          printf 'Host libc: %s\n' "$glibc_version"
+          test "$glibc_version" = "glibc 2.35"
+
+          asdf plugin add agg "https://github.com/${GITHUB_REPOSITORY}.git"
+          asdf plugin update agg "$PLUGIN_REF"
+          version=$(asdf latest agg)
+          asdf list all agg | grep -Fx "$version"
+          asdf install agg "$version"
+
+          work_dir=$(mktemp -d)
+          cd "$work_dir"
+          asdf set agg "$version"
+          installed_version=$(asdf exec agg --version)
+          printf 'Installed agg: %s\n' "$installed_version"
+          test "$installed_version" = "agg $version"
+
+          printf '%s\n' \
+            '{"version":2,"width":40,"height":8,"timestamp":0,"env":{"SHELL":"/bin/sh","TERM":"xterm-256color"}}' \
+            '[0.0,"o","asdf-agg glibc compatibility smoke\\r\\n"]' \
+            >input.cast
+          asdf exec agg input.cast output.gif
+          test -s output.gif
+          gif_header=$(LC_ALL=C head -c 6 output.gif)
+          case "$gif_header" in
+            GIF87a | GIF89a)
+              printf 'Rendered GIF header: %s\n' "$gif_header"
+              ;;
+            *)
+              printf 'Unexpected GIF header: %s\n' "$gif_header" >&2
+              exit 1
+              ;;
+          esac
+
   minimum-asdf-version:
     name: Minimum asdf version (v0.16.0, Linux x86_64)
     runs-on: ubuntu-24.04

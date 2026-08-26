@@ -26,7 +26,14 @@ fi
 validate_release_version "$version"
 detected_os=$(uname -s)
 detected_architecture=$(uname -m)
-detected_libc=$(detect_libc "$detected_os" "$detected_architecture")
+case "${detected_os}/${detected_architecture}" in
+Linux/x86_64 | Linux/amd64 | linux/x86_64 | linux/amd64)
+	detected_libc=
+	;;
+*)
+	detected_libc=$(detect_libc "$detected_os" "$detected_architecture")
+	;;
+esac
 mkdir -p "$download_path"
 temporary_binary=$(mktemp "${download_path}/.agg.XXXXXX") || fail "could not create download staging file"
 

@@ -90,20 +90,18 @@ release_asset() {
 
 	case "$os" in
 	Linux | linux)
-		case "$libc" in
-		gnu)
-			target_os=unknown-linux-gnu
-			;;
-		musl)
-			if [ "$target_architecture" != "x86_64" ]; then
-				fail "unsupported platform: ${os}/${architecture} (libc: $libc)"
-			fi
+		if [ "$target_architecture" = "x86_64" ]; then
 			target_os=unknown-linux-musl
-			;;
-		*)
-			fail "unsupported platform: ${os}/${architecture} (libc: ${libc:-unknown})"
-			;;
-		esac
+		else
+			case "$libc" in
+			gnu)
+				target_os=unknown-linux-gnu
+				;;
+			*)
+				fail "unsupported platform: ${os}/${architecture} (libc: ${libc:-unknown})"
+				;;
+			esac
+		fi
 		;;
 	Darwin | darwin)
 		target_os=apple-darwin
